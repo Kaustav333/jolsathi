@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JolSathi — Assam Flood Safety Map</title>
+  <meta name="description" content="Real-time flooding alerts, verified community reports, and safer routes for every journey across Assam. Stay safe during flood season with JolSathi." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="language.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#"><span class="brand-mark">⌁</span><span>Jol<span>Sathi</span></span></a>
+    <div class="status"><span class="pulse"></span> Live flood intelligence <span class="updated">Updated just now</span></div>
+    <button id="languageToggle" class="language" aria-label="Switch between Assamese and English">অসমীয়া</button>
+    <button class="profile" aria-label="Open profile">K</button>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div>
+        <p class="eyebrow">ASSAM • COMMUNITY SAFETY NETWORK</p>
+        <h1>Know the road<br><em>before</em> you go.</h1>
+        <p class="lede">Real-time flooding alerts, verified community reports, and safer routes for every journey across Assam.</p>
+      </div>
+      <div class="weather-card"><span class="cloud">☁</span><div><strong>28°</strong><span>Guwahati, Assam</span></div><small>Heavy rain expected<br>next 3 hours</small></div>
+    </section>
+
+    <section class="dashboard">
+      <aside class="sidebar">
+        <div class="search"><span>⌕</span><input id="placeSearch" placeholder="Search a place or road" /><kbd>⌘ K</kbd></div>
+        <div class="route-box">
+          <p class="section-label">PLAN A SAFER TRIP</p>
+          <label><i class="origin-dot"></i><input id="origin" value="Your location" /></label>
+          <span class="route-line"></span>
+          <label><i class="destination-dot"></i><input id="destination" placeholder="Where are you going?" /></label>
+          <button id="routeButton" class="primary full">Find safest route <span>→</span></button>
+        </div>
+        <div class="safety-score"><div class="score-ring"><b>72</b><small>/100</small></div><div><p class="section-label">AREA SAFETY SCORE</p><strong>Exercise caution</strong><span>Based on 48 recent reports</span></div></div>
+        <div class="report-heading"><div><p class="section-label">NEARBY REPORTS</p><h2>What people are seeing</h2></div><button class="filter">⌄ Filter</button></div>
+        <div id="reportList" class="report-list"></div>
+      </aside>
+
+      <section class="map-panel" aria-label="Flood map of Assam">
+        <div class="map-toolbar"><button class="map-control active" data-layer="flood">≈ Flooding</button><button class="map-control" data-layer="roads">⊞ Road status</button><button class="map-control" data-layer="rain">☂ Rainfall</button></div>
+        <div class="map-key"><span><i class="key red"></i> Not safe</span><span><i class="key orange"></i> Caution</span><span><i class="key green"></i> Clear</span></div>
+        <button id="locateButton" class="locate" title="Find my location">◎</button>
+        <div id="mapNotice" class="map-notice">Showing flood-risk reports across Assam</div>
+        <!-- Google Map container -->
+        <div id="googleMap"></div>
+        <div class="map-attribution">Map data © Google Maps &nbsp; • &nbsp; Community safety layer by JolSathi</div>
+      </section>
+    </section>
+  </main>
+
+  <button id="reportButton" class="fab"><span>＋</span> Report a hazard</button>
+  <dialog id="reportDialog"><form method="dialog" id="reportForm"><button class="close" value="cancel">×</button><p class="eyebrow">KEEP YOUR COMMUNITY SAFE</p><h2>Report a road hazard</h2><p class="dialog-copy">Your update will help travellers make safer choices.</p><label>Location<input required placeholder="e.g. NH 27 near Chandrapur" /></label><label>What did you see?<select><option>Road flooded / impassable</option><option>Waterlogging — pass with care</option><option>Bridge or road damage</option><option>Road is clear now</option></select></label><label>Details (optional)<textarea placeholder="Water level, landmarks, vehicle access…"></textarea></label><label class="photo-upload">▧ Add a photo <input type="file" accept="image/*" hidden></label><button class="primary full" value="submit">Publish report</button></form></dialog>
+
+  <template id="reportTemplate"><article class="report"><div class="report-icon"></div><div class="report-content"><div class="report-title"><strong></strong><time></time></div><p></p><div class="report-meta"><span class="reporter"></span><span class="verified">✓ Verified by community</span></div></div></article></template>
+
+  <!-- Local config (gitignored — holds API key for local dev) -->
+  <script src="config.js" onerror="console.log('No local config.js — will fetch key from /api/maps-config')"></script>
+  <script src="app.js"></script>
+</body>
+</html>

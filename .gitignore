@@ -1,0 +1,16 @@
+# Local config with API keys — NEVER commit this
+config.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Vercel
+.vercel/
+
+# Node
+node_modules/
