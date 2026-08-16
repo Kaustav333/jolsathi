@@ -180,6 +180,9 @@ function initMap() {
     }
   });
 
+  // Fetch live weather for Guwahati (default)
+  fetchWeather(26.1445, 91.7362, 'Guwahati, Assam');
+
   trafficLayer = new google.maps.TrafficLayer();
 
   // Add flood report markers
@@ -435,6 +438,107 @@ function countHazardsAlongRoute(route) {
   return count;
 }
 
+// ─── Live Weather (Open-Meteo API — free, no key needed) ─────────────────────
+const weatherIcons = {
+  0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+  45: '🌫️', 48: '🌫️',
+  51: '🌦️', 53: '🌧️', 55: '🌧️',
+  56: '🌨️', 57: '🌨️',
+  61: '🌦️', 63: '🌧️', 65: '🌧️',
+  66: '🌨️', 67: '🌨️',
+  71: '🌨️', 73: '❄️', 75: '❄️', 77: '❄️',
+  80: '🌦️', 81: '🌧️', 82: '⛈️',
+  85: '🌨️', 86: '🌨️',
+  95: '⛈️', 96: '⛈️', 99: '⛈️'
+};
+
+const weatherDescriptions = {
+  0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+  45: 'Foggy', 48: 'Depositing rime fog',
+  51: 'Light drizzle', 53: 'Moderate drizzle', 55: 'Dense drizzle',
+  56: 'Freezing drizzle', 57: 'Freezing drizzle',
+  61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain',
+  66: 'Freezing rain', 67: 'Heavy freezing rain',
+  71: 'Slight snowfall', 73: 'Moderate snowfall', 75: 'Heavy snowfall', 77: 'Snow grains',
+  80: 'Slight rain showers', 81: 'Moderate rain showers', 82: 'Violent rain showers',
+  85: 'Slight snow showers', 86: 'Heavy snow showers',
+  95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Thunderstorm with heavy hail'
+};
+
+async function fetchWeather(lat, lng, locationName) {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&hourly=temperature_2m,weather_code,precipitation_probability&timezone=auto&forecast_hours=6`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Weather API error');
+    const data = await res.json();
+
+    const temp = Math.round(data.current.temperature_2m);
+    const code = data.current.weather_code;
+    const icon = weatherIcons[code] || '☁️';
+    const description = weatherDescriptions[code] || 'Unknown';
+
+    // Check upcoming hours for rain
+    let rainForecast = '';
+    if (data.hourly && data.hourly.precipitation_probability) {
+      const probs = data.hourly.precipitation_probability.slice(0, 6);
+      const maxProb = Math.max(...probs);
+      const maxIndex = probs.indexOf(maxProb);
+
+      if (maxProb >= 70) {
+        rainForecast = `Heavy rain likely<br>next ${maxIndex + 1} hour${maxIndex > 0 ? 's' : ''}`;
+      } else if (maxProb >= 40) {
+        rainForecast = `Rain possible (${maxProb}%)<br>next ${maxIndex + 1} hour${maxIndex > 0 ? 's' : ''}`;
+      } else {
+        rainForecast = `Low rain chance<br>next 6 hours`;
+      }
+    }
+
+    // Update weather card
+    document.getElementById('weatherIcon').textContent = icon;
+    document.getElementById('weatherTemp').textContent = `${temp}°`;
+    document.getElementById('weatherLocation').textContent = locationName || 'Your area';
+    document.getElementById('weatherForecast').innerHTML = rainForecast || `${description}`;
+
+    // Update "Updated just now" timestamp
+    const updatedEl = document.querySelector('.updated');
+    if (updatedEl) {
+      const now = new Date();
+      updatedEl.textContent = `Updated ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+  } catch (err) {
+    console.error('Weather fetch failed:', err);
+    document.getElementById('weatherIcon').textContent = '☁';
+    document.getElementById('weatherTemp').textContent = '--°';
+    document.getElementById('weatherLocation').textContent = locationName || 'Weather unavailable';
+    document.getElementById('weatherForecast').innerHTML = 'Could not load<br>weather data';
+  }
+}
+
+// Resolve coordinates to a city name using Google Maps Geocoder
+function getCityName(lat, lng) {
+  return new Promise(resolve => {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        // Try to find city/locality from address components
+        for (const result of results) {
+          for (const comp of result.address_components) {
+            if (comp.types.includes('locality')) {
+              const state = result.address_components.find(c => c.types.includes('administrative_area_level_1'));
+              resolve(state ? `${comp.long_name}, ${state.short_name}` : comp.long_name);
+              return;
+            }
+          }
+        }
+        // Fallback: use first result's formatted address
+        resolve(results[0].formatted_address.split(',').slice(0, 2).join(','));
+      } else {
+        resolve('Your area');
+      }
+    });
+  });
+}
+
 // ─── Geolocation ──────────────────────────────────────────────────────────────
 function setupGeolocation() {
   document.getElementById('locateButton').addEventListener('click', () => {
@@ -489,6 +593,11 @@ function setupGeolocation() {
         document.getElementById('origin').value = 'Your location';
 
         notice.textContent = 'Your location is shown — nearby risks highlighted';
+
+        // Update weather for user's actual location
+        getCityName(userPos.lat, userPos.lng).then(cityName => {
+          fetchWeather(userPos.lat, userPos.lng, cityName);
+        });
 
         // Check nearby hazards
         const nearby = reports.filter(r => {
