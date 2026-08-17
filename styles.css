@@ -34,9 +34,9 @@ body {
   top: 0;
   z-index: 100;
 }
-.brand { font-weight: 700; font-size: 22px; color: #153b39; text-decoration: none; letter-spacing: -1px; }
+.brand { font-weight: 700; font-size: 26px; color: #153b39; text-decoration: none; letter-spacing: -1px; display: flex; align-items: center; }
 .brand span span { color: #10928b; }
-.brand-mark { font-family: Georgia; font-size: 35px; color: #10928b; vertical-align: -3px; margin-right: 3px; }
+.brand-mark { font-family: Georgia; font-size: 40px; color: #10928b; margin-right: 4px; padding-bottom: 2px; }
 .status { font-size: 12px; color: #52706d; display: flex; align-items: center; gap: 7px; margin: auto; }
 .updated { color: #9aa9a6; margin-left: 6px; }
 .pulse { width: 8px; height: 8px; background: #2dbd91; border-radius: 50%; box-shadow: 0 0 0 4px #e1f7ef; animation: pulse-ring 2s ease-in-out infinite; }
