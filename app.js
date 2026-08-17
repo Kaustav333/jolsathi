@@ -658,8 +658,8 @@ function triggerGeolocation() {
 
       map.setView([userLat, userLng], 14);
 
-      // Update origin input
-      document.getElementById('origin').value = 'Your location';
+      // Origin input stays empty — placeholder shows "Your location"
+      // If user clicks route without typing, it auto-uses their GPS location
 
       notice.textContent = 'Your location is shown — nearby risks highlighted';
 
