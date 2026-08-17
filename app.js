@@ -383,8 +383,19 @@ function setupRouting() {
         return;
       }
     }
+    
+    // Improve accuracy for small Assam towns by appending context if missing
+    let searchOrigin = origin;
+    let searchDest = destination;
+    
+    if (searchOrigin !== 'Your location' && searchOrigin !== 'আপোনাৰ অৱস্থান' && !searchOrigin.toLowerCase().includes('assam')) {
+      searchOrigin += ', Assam';
+    }
+    if (!searchDest.toLowerCase().includes('assam')) {
+      searchDest += ', Assam';
+    }
 
-    calculateRoute(origin, destination, notice);
+    calculateRoute(searchOrigin, searchDest, notice);
   });
 }
 
@@ -413,9 +424,24 @@ function calculateRoute(origin, destination, notice) {
           ${hazardCount > 0 ? ` · ⚠️ ${hazardCount} reported flood zone${hazardCount > 1 ? 's' : ''} nearby` : ' · ✅ No reported flood zones'}
         `;
         notice.classList.add('route-active');
+        
+        // Also ensure the map is zoomed to the route
+        if (result.routes[0].bounds) {
+          map.fitBounds(result.routes[0].bounds);
+        }
       } else {
         notice.textContent = 'Could not find a route. Try different locations.';
         notice.classList.remove('route-active');
+        
+        // Give explicit feedback in case the user misses the map notice overlay
+        const originalText = document.getElementById('routeButton').innerHTML;
+        document.getElementById('routeButton').innerHTML = 'Route not found';
+        document.getElementById('routeButton').style.background = '#e64c42';
+        
+        setTimeout(() => {
+          document.getElementById('routeButton').innerHTML = originalText;
+          document.getElementById('routeButton').style.background = '';
+        }, 3000);
       }
     }
   );
