@@ -8,6 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="language.css" />
 </head>
@@ -32,6 +36,7 @@
     <section class="dashboard">
       <aside class="sidebar">
         <div class="search"><span>⌕</span><input id="placeSearch" placeholder="Search a place or road" /><kbd>⌘ K</kbd></div>
+        <div id="searchResults" class="search-results" style="display:none;"></div>
         <div class="route-box">
           <p class="section-label">PLAN A SAFER TRIP</p>
           <label><i class="origin-dot"></i><input id="origin" value="Your location" /></label>
@@ -39,6 +44,7 @@
           <label><i class="destination-dot"></i><input id="destination" placeholder="Where are you going?" /></label>
           <button id="routeButton" class="primary full">Find safest route <span>→</span></button>
         </div>
+        <div id="routeHazardsContainer" style="display:none; margin-bottom: 20px;"></div>
         <div class="safety-score"><div class="score-ring"><b>72</b><small>/100</small></div><div><p class="section-label">AREA SAFETY SCORE</p><strong>Exercise caution</strong><span>Based on 48 recent reports</span></div></div>
         <div class="report-heading"><div><p class="section-label">NEARBY REPORTS (DEMO DATA)</p><h2>What people are seeing</h2><p style="font-size: 11px; color: #81908d; margin-top: 4px; line-height: 1.4;">These are example reports. Add real-time reports of your area to alert others—they will show up here.</p></div></div>
         <div id="reportList" class="report-list"></div>
@@ -49,9 +55,9 @@
         <div class="map-key"><span><i class="key red"></i> Not safe</span><span><i class="key orange"></i> Caution</span><span><i class="key green"></i> Clear</span></div>
         <button id="locateButton" class="locate" title="Find my location">◎</button>
         <div id="mapNotice" class="map-notice">Showing flood-risk reports across Assam</div>
-        <!-- Google Map container -->
-        <div id="googleMap"></div>
-        <div class="map-attribution">Map data © Google Maps &nbsp; • &nbsp; Community safety layer by JolSathi</div>
+        <!-- Leaflet Map container -->
+        <div id="leafletMap"></div>
+        <div class="map-attribution">Map data © OpenStreetMap contributors &nbsp; • &nbsp; Community safety layer by JolSathi</div>
       </section>
     </section>
   </main>
@@ -89,8 +95,10 @@
 
   <template id="reportTemplate"><article class="report"><div class="report-icon"></div><div class="report-content"><div class="report-title"><strong></strong><time></time></div><p></p><div class="report-meta"><span class="reporter"></span><span class="verified">✓ Verified by community</span></div></div></article></template>
 
-  <!-- Local config (gitignored — holds API key for local dev) -->
-  <script src="config.js" onerror="console.log('No local config.js — will fetch key from /api/maps-config')"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet Routing Machine (uses free OSRM) -->
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -8,7 +8,8 @@ const reports = [
     time: '12 min ago',
     type: 'danger',
     lat: 26.18,
-    lng: 91.72
+    lng: 91.72,
+    photo: null
   },
   {
     id: 2,
@@ -18,7 +19,8 @@ const reports = [
     time: '28 min ago',
     type: 'caution',
     lat: 26.15,
-    lng: 91.80
+    lng: 91.80,
+    photo: null
   },
   {
     id: 3,
@@ -28,7 +30,8 @@ const reports = [
     time: '44 min ago',
     type: 'danger',
     lat: 26.95,
-    lng: 94.17
+    lng: 94.17,
+    photo: null
   },
   {
     id: 4,
@@ -38,7 +41,8 @@ const reports = [
     time: '1 hr ago',
     type: 'caution',
     lat: 26.63,
-    lng: 92.80
+    lng: 92.80,
+    photo: null
   },
   {
     id: 5,
@@ -48,7 +52,8 @@ const reports = [
     time: '2 hr ago',
     type: 'safe',
     lat: 26.17,
-    lng: 91.75
+    lng: 91.75,
+    photo: null
   }
 ];
 
@@ -68,128 +73,67 @@ const markerGlyphs = {
 // ─── Globals ──────────────────────────────────────────────────────────────────
 let map;
 let markers = [];
-let infoWindow;
-let directionsService;
-let directionsRenderer;
-let trafficLayer;
 let userMarker;
-let originAutocomplete;
-let destinationAutocomplete;
-let searchAutocomplete;
+let userAccuracyCircle;
+let routingControl;
+let currentRouteLayer;
+let rainfallOverlays = [];
+let searchTimeout;
 
-// ─── Custom map style (matches JolSathi's green/teal aesthetic) ───────────────
-const mapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#e6f2e4' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#516b67' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
-  {
-    featureType: 'administrative',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#b5d1ab' }]
-  },
-  {
-    featureType: 'administrative.land_parcel',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#7a9e74' }]
-  },
-  {
-    featureType: 'landscape.natural',
-    elementType: 'geometry',
-    stylers: [{ color: '#d2e7ce' }]
-  },
-  {
-    featureType: 'poi',
-    elementType: 'geometry',
-    stylers: [{ color: '#c8dfc4' }]
-  },
-  {
-    featureType: 'poi',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#5a7d56' }]
-  },
-  {
-    featureType: 'poi.park',
-    elementType: 'geometry.fill',
-    stylers: [{ color: '#b8d8b0' }]
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [{ color: '#f7f4e9' }]
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#cfc89f' }]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry',
-    stylers: [{ color: '#f0ead6' }]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#c5bb8e' }]
-  },
-  {
-    featureType: 'transit.line',
-    elementType: 'geometry',
-    stylers: [{ color: '#c8dfc4' }]
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#91cfdf' }]
-  },
-  {
-    featureType: 'water',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#4b9bac' }]
-  }
-];
+// ─── Assam bounds for restricting the map ─────────────────────────────────────
+const assamBounds = L.latLngBounds(
+  L.latLng(24.0, 89.5),   // Southwest corner
+  L.latLng(28.0, 97.0)    // Northeast corner
+);
+
+// ─── Create custom marker icon (SVG) ──────────────────────────────────────────
+function createMarkerIcon(type) {
+  const color = markerColors[type] || markerColors.caution;
+  const glyph = markerGlyphs[type] || '!';
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46">
+      <path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 28 18 28s18-15.4 18-28C36 8.06 27.94 0 18 0z" fill="${color}" />
+      <circle cx="18" cy="18" r="10" fill="white" opacity="0.3"/>
+      <text x="18" y="23" text-anchor="middle" fill="white" font-size="16" font-weight="bold" font-family="Arial">${glyph}</text>
+    </svg>`;
+  return L.icon({
+    iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    iconSize: [36, 46],
+    iconAnchor: [18, 46],
+    popupAnchor: [0, -46]
+  });
+}
 
 // ─── Initialize Map ───────────────────────────────────────────────────────────
 function initMap() {
-  // Center on Assam
-  const assamCenter = { lat: 26.2006, lng: 92.9376 };
+  const assamCenter = [26.2006, 92.9376];
 
-  map = new google.maps.Map(document.getElementById('googleMap'), {
+  map = L.map('leafletMap', {
     center: assamCenter,
     zoom: 8,
-    styles: mapStyle,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: false,
-    zoomControl: true,
-    zoomControlOptions: {
-      position: google.maps.ControlPosition.RIGHT_CENTER
-    },
-    gestureHandling: 'greedy'
+    maxBounds: assamBounds.pad(0.3), // Restrict panning to Assam (with some padding)
+    maxBoundsViscosity: 0.8,         // Make the bounds "sticky"
+    minZoom: 7,
+    zoomControl: false
   });
 
-  infoWindow = new google.maps.InfoWindow();
-  directionsService = new google.maps.DirectionsService();
-  directionsRenderer = new google.maps.DirectionsRenderer({
-    map: map,
-    suppressMarkers: false,
-    polylineOptions: {
-      strokeColor: '#0e706c',
-      strokeWeight: 5,
-      strokeOpacity: 0.8
-    }
-  });
+  // Add zoom control to the right
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
+  // Add OpenStreetMap tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '',
+    maxZoom: 19
+  }).addTo(map);
 
   // Fetch live weather for Guwahati (default)
   fetchWeather(26.1445, 91.7362, 'Guwahati, Assam');
 
-  trafficLayer = new google.maps.TrafficLayer();
-
   // Add flood report markers
   addReportMarkers();
 
-  // Setup Places Autocomplete
-  setupAutocomplete();
+  // Setup search
+  setupSearch();
 
   // Setup route finding
   setupRouting();
@@ -218,55 +162,34 @@ function initMap() {
   triggerGeolocation();
 }
 
-// ─── Create custom marker SVG ─────────────────────────────────────────────────
-function createMarkerIcon(type) {
-  const color = markerColors[type] || markerColors.caution;
-  const glyph = markerGlyphs[type] || '!';
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46">
-      <path d="M18 0C8.06 0 0 8.06 0 18c0 12.6 18 28 18 28s18-15.4 18-28C36 8.06 27.94 0 18 0z" fill="${color}" />
-      <circle cx="18" cy="18" r="10" fill="white" opacity="0.3"/>
-      <text x="18" y="23" text-anchor="middle" fill="white" font-size="16" font-weight="bold" font-family="Arial">${glyph}</text>
-    </svg>`;
-  return {
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-    scaledSize: new google.maps.Size(36, 46),
-    anchor: new google.maps.Point(18, 46)
-  };
-}
-
 // ─── Add Report Markers ───────────────────────────────────────────────────────
 function addReportMarkers() {
   reports.forEach(report => {
-    const marker = new google.maps.Marker({
-      position: { lat: report.lat, lng: report.lng },
-      map: map,
+    const marker = L.marker([report.lat, report.lng], {
       icon: createMarkerIcon(report.type),
-      title: report.title,
-      animation: google.maps.Animation.DROP,
-      optimized: false
-    });
+      title: report.title
+    }).addTo(map);
 
     marker.reportData = report;
 
-    marker.addListener('click', () => {
-      const statusClass = report.type === 'danger' ? 'iw-danger' : report.type === 'caution' ? 'iw-caution' : 'iw-safe';
-      const statusLabel = report.type === 'danger' ? 'Not Safe' : report.type === 'caution' ? 'Caution' : 'Clear';
+    const statusClass = report.type === 'danger' ? 'iw-danger' : report.type === 'caution' ? 'iw-caution' : 'iw-safe';
+    const statusLabel = report.type === 'danger' ? 'Not Safe' : report.type === 'caution' ? 'Caution' : 'Clear';
 
-      infoWindow.setContent(`
-        <div class="iw-content ${statusClass}">
-          <div class="iw-badge">${statusLabel}</div>
-          <h3>${report.title}</h3>
-          <p>${report.text}</p>
-          <div class="iw-meta">
-            <span>📍 ${report.time}</span>
-            <span>👤 ${report.name}</span>
-          </div>
-          <div class="iw-verified">✓ Verified by community</div>
+    marker.bindPopup(`
+      <div class="iw-content ${statusClass}">
+        <div class="iw-badge">${statusLabel}</div>
+        <h3>${report.title}</h3>
+        <p>${report.text}</p>
+        <div class="iw-meta">
+          <span>📍 ${report.time}</span>
+          <span>👤 ${report.name}</span>
         </div>
-      `);
-      infoWindow.open(map, marker);
-      map.panTo(marker.getPosition());
+        <div class="iw-verified">✓ Verified by community</div>
+      </div>
+    `, { maxWidth: 280, className: 'custom-popup' });
+
+    marker.on('click', () => {
+      map.panTo(marker.getLatLng());
     });
 
     markers.push(marker);
@@ -293,9 +216,8 @@ function renderReports() {
     a.addEventListener('click', () => {
       const marker = markers.find(m => m.reportData && m.reportData.id === r.id);
       if (marker && map) {
-        map.panTo(marker.getPosition());
-        map.setZoom(13);
-        google.maps.event.trigger(marker, 'click');
+        map.setView(marker.getLatLng(), 13);
+        marker.openPopup();
       }
     });
 
@@ -303,51 +225,101 @@ function renderReports() {
   });
 }
 
-// ─── Places Autocomplete ──────────────────────────────────────────────────────
-function setupAutocomplete() {
+// ─── Nominatim Search (free, no API key) ──────────────────────────────────────
+function setupSearch() {
   const searchInput = document.getElementById('placeSearch');
-  const originInput = document.getElementById('origin');
-  const destinationInput = document.getElementById('destination');
+  const resultsDiv = document.getElementById('searchResults');
 
-  // Assam bounds for biasing
-  const assamBounds = new google.maps.LatLngBounds(
-    { lat: 24.0, lng: 89.5 },
-    { lat: 28.0, lng: 97.0 }
-  );
-
-  const autocompleteOptions = {
-    bounds: assamBounds,
-    componentRestrictions: { country: 'in' },
-    fields: ['place_id', 'geometry', 'name', 'formatted_address']
-  };
-
-  // Search bar autocomplete
-  searchAutocomplete = new google.maps.places.Autocomplete(searchInput, autocompleteOptions);
-  searchAutocomplete.addListener('place_changed', () => {
-    const place = searchAutocomplete.getPlace();
-    if (place.geometry && place.geometry.location) {
-      map.panTo(place.geometry.location);
-      map.setZoom(14);
-      document.getElementById('mapNotice').textContent = `Showing: ${place.name || place.formatted_address}`;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    const query = searchInput.value.trim();
+    if (query.length < 3) {
+      resultsDiv.style.display = 'none';
+      return;
     }
+    searchTimeout = setTimeout(() => nominatimSearch(query, resultsDiv, (lat, lng, name) => {
+      map.setView([lat, lng], 14);
+      document.getElementById('mapNotice').textContent = `Showing: ${name}`;
+      resultsDiv.style.display = 'none';
+      searchInput.value = name;
+    }), 400);
   });
 
-  // Origin autocomplete
-  originAutocomplete = new google.maps.places.Autocomplete(originInput, autocompleteOptions);
-  originAutocomplete.addListener('place_changed', () => {
-    // origin selected
-  });
-
-  // Destination autocomplete
-  destinationAutocomplete = new google.maps.places.Autocomplete(destinationInput, autocompleteOptions);
-  destinationAutocomplete.addListener('place_changed', () => {
-    // destination selected
+  // Close results when clicking elsewhere
+  document.addEventListener('click', (e) => {
+    if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+      resultsDiv.style.display = 'none';
+    }
   });
 }
 
-// ─── Route Finding ────────────────────────────────────────────────────────────
+async function nominatimSearch(query, resultsDiv, onSelect) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Assam, India')}&limit=5&countrycodes=in&viewbox=89.5,24.0,97.0,28.0&bounded=1`;
+    const res = await fetch(url, {
+      headers: { 'Accept-Language': 'en' }
+    });
+    const data = await res.json();
+
+    if (data.length === 0) {
+      resultsDiv.innerHTML = '<div class="search-item" style="color:#9aa9a6;">No results found</div>';
+      resultsDiv.style.display = 'block';
+      return;
+    }
+
+    resultsDiv.innerHTML = '';
+    data.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'search-item';
+      div.textContent = item.display_name.split(',').slice(0, 3).join(',');
+      div.addEventListener('click', () => {
+        onSelect(parseFloat(item.lat), parseFloat(item.lon), item.display_name.split(',').slice(0, 2).join(','));
+      });
+      resultsDiv.appendChild(div);
+    });
+    resultsDiv.style.display = 'block';
+  } catch (err) {
+    console.error('Nominatim search failed:', err);
+  }
+}
+
+// ─── Geocode a place name to coordinates using Nominatim ──────────────────────
+async function geocodePlace(query) {
+  try {
+    const searchQuery = query.toLowerCase().includes('assam') ? query : query + ', Assam, India';
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&countrycodes=in`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    if (data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), name: data[0].display_name };
+    }
+    return null;
+  } catch (err) {
+    console.error('Geocoding failed:', err);
+    return null;
+  }
+}
+
+// ─── Reverse geocode coordinates to city name using Nominatim ─────────────────
+async function getCityName(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    if (data && data.address) {
+      const city = data.address.city || data.address.town || data.address.village || data.address.county || '';
+      const state = data.address.state || '';
+      return city ? `${city}, ${state}` : (state || 'Your area');
+    }
+    return 'Your area';
+  } catch (err) {
+    return 'Your area';
+  }
+}
+
+// ─── Route Finding (OSRM — free, no key needed) ──────────────────────────────
 function setupRouting() {
-  document.getElementById('routeButton').addEventListener('click', () => {
+  document.getElementById('routeButton').addEventListener('click', async () => {
     const originInput = document.getElementById('origin');
     const destInput = document.getElementById('destination');
     const origin = originInput.value.trim();
@@ -356,18 +328,18 @@ function setupRouting() {
 
     if (!destination) {
       destInput.focus();
+      notice.textContent = 'Please enter a destination.';
       return;
     }
 
     // Handle "Your location" as origin
-    let originValue = origin;
     if (origin === 'Your location' || origin === 'আপোনাৰ অৱস্থান' || !origin) {
       if (navigator.geolocation) {
         notice.textContent = 'Getting your location…';
         navigator.geolocation.getCurrentPosition(
-          pos => {
-            const userLatLng = new google.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-            calculateRoute(userLatLng, destination, notice);
+          async pos => {
+            const userLatLng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+            await calculateRoute(userLatLng, destination, notice);
           },
           () => {
             notice.textContent = 'Could not get location. Please enter an origin.';
@@ -383,85 +355,131 @@ function setupRouting() {
         return;
       }
     }
-    
-    // Improve accuracy for small Assam towns by appending context if missing
-    let searchOrigin = origin;
-    let searchDest = destination;
-    
-    if (searchOrigin !== 'Your location' && searchOrigin !== 'আপোনাৰ অৱস্থান' && !searchOrigin.toLowerCase().includes('assam')) {
-      searchOrigin += ', Assam';
-    }
-    if (!searchDest.toLowerCase().includes('assam')) {
-      searchDest += ', Assam';
+
+    // Geocode the origin
+    notice.textContent = 'Finding route…';
+    const originGeo = await geocodePlace(origin);
+    if (!originGeo) {
+      notice.textContent = 'Could not find origin location. Try a different name.';
+      showRouteError();
+      return;
     }
 
-    calculateRoute(searchOrigin, searchDest, notice);
+    await calculateRoute(L.latLng(originGeo.lat, originGeo.lng), destination, notice);
   });
 }
 
-function calculateRoute(origin, destination, notice) {
+async function calculateRoute(originLatLng, destination, notice) {
   notice.textContent = 'Finding safest route…';
 
-  directionsService.route(
-    {
-      origin: origin,
-      destination: destination,
-      travelMode: google.maps.TravelMode.DRIVING,
-      provideRouteAlternatives: true,
-      region: 'in'
-    },
-    (result, status) => {
-      if (status === google.maps.DirectionsStatus.OK) {
-        directionsRenderer.setDirections(result);
+  // Geocode destination
+  const destGeo = await geocodePlace(destination);
+  if (!destGeo) {
+    notice.textContent = 'Could not find destination. Try a different name.';
+    showRouteError();
+    return;
+  }
 
-        const route = result.routes[0];
-        const leg = route.legs[0];
-        const hazardCount = countHazardsAlongRoute(route);
+  const destLatLng = L.latLng(destGeo.lat, destGeo.lng);
 
-        notice.innerHTML = `
-          <strong>Route found:</strong> ${leg.start_address.split(',')[0]} → ${leg.end_address.split(',')[0]}
-          <br>🕐 ${leg.duration.text} · 📏 ${leg.distance.text}
-          ${hazardCount > 0 ? ` · ⚠️ ${hazardCount} reported flood zone${hazardCount > 1 ? 's' : ''} nearby` : ' · ✅ No reported flood zones'}
-        `;
-        notice.classList.add('route-active');
-        
-        // Also ensure the map is zoomed to the route
-        if (result.routes[0].bounds) {
-          map.fitBounds(result.routes[0].bounds);
-        }
-      } else {
-        notice.textContent = 'Could not find a route. Try different locations.';
-        notice.classList.remove('route-active');
-        
-        // Give explicit feedback in case the user misses the map notice overlay
-        const originalText = document.getElementById('routeButton').innerHTML;
-        document.getElementById('routeButton').innerHTML = 'Route not found';
-        document.getElementById('routeButton').style.background = '#e64c42';
-        
-        setTimeout(() => {
-          document.getElementById('routeButton').innerHTML = originalText;
-          document.getElementById('routeButton').style.background = '';
-        }, 3000);
-      }
+  // Remove previous route
+  if (routingControl) {
+    map.removeControl(routingControl);
+    routingControl = null;
+  }
+  if (currentRouteLayer) {
+    map.removeLayer(currentRouteLayer);
+    currentRouteLayer = null;
+  }
+
+  try {
+    // Use OSRM free API for routing
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${originLatLng.lng},${originLatLng.lat};${destLatLng.lng},${destLatLng.lat}?overview=full&geometries=geojson&steps=true`;
+    const res = await fetch(osrmUrl);
+    const data = await res.json();
+
+    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+      notice.textContent = 'Could not find a route. Try different locations.';
+      showRouteError();
+      return;
     }
-  );
+
+    const route = data.routes[0];
+    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]); // [lng,lat] → [lat,lng]
+
+    // Draw the route on the map
+    currentRouteLayer = L.polyline(coords, {
+      color: '#0e706c',
+      weight: 6,
+      opacity: 0.8
+    }).addTo(map);
+
+    // Fit map to route
+    map.fitBounds(currentRouteLayer.getBounds().pad(0.1));
+
+    // Calculate duration and distance
+    const durationMin = Math.round(route.duration / 60);
+    const distKm = (route.distance / 1000).toFixed(1);
+    const durationText = durationMin >= 60 ? `${Math.floor(durationMin / 60)} hr ${durationMin % 60} min` : `${durationMin} min`;
+
+    // Check hazards along route
+    const hazardCount = countHazardsAlongRoute(coords);
+
+    const originName = document.getElementById('origin').value.split(',')[0];
+    const destName = document.getElementById('destination').value.split(',')[0];
+
+    notice.innerHTML = `
+      <strong>Route found:</strong> ${originName} → ${destName}
+      <br>🕐 ${durationText} · 📏 ${distKm} km
+      ${hazardCount > 0 ? ` · ⚠️ ${hazardCount} reported flood zone${hazardCount > 1 ? 's' : ''} nearby` : ' · ✅ No reported flood zones'}
+    `;
+    notice.classList.add('route-active');
+
+  } catch (err) {
+    console.error('Routing error:', err);
+    notice.textContent = 'Routing failed. Please try again.';
+    showRouteError();
+  }
 }
 
-function countHazardsAlongRoute(route) {
+function showRouteError() {
+  const btn = document.getElementById('routeButton');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = 'Route not found';
+  btn.style.background = '#e64c42';
+  setTimeout(() => {
+    btn.innerHTML = originalText;
+    btn.style.background = '';
+  }, 3000);
+}
+
+// ─── Distance calculation helper (Haversine) ──────────────────────────────────
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // Earth radius in meters
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ─── Count and highlight hazards along route ──────────────────────────────────
+function countHazardsAlongRoute(routeCoords) {
   let count = 0;
-  const path = route.overview_path;
   const hazardsOnRoute = [];
 
   markers.forEach(marker => {
     const report = marker.reportData;
     if (!report || report.type === 'safe') return;
-    
-    const reportPos = new google.maps.LatLng(report.lat, report.lng);
+
+    const reportLat = report.lat;
+    const reportLng = report.lng;
     let isOnRoute = false;
 
-    for (let i = 0; i < path.length; i++) {
-      const dist = google.maps.geometry.spherical.computeDistanceBetween(path[i], reportPos);
-      if (dist < 5000) { // within 5km of route
+    // Check every 5th point of route for performance
+    for (let i = 0; i < routeCoords.length; i += 5) {
+      const dist = haversineDistance(routeCoords[i][0], routeCoords[i][1], reportLat, reportLng);
+      if (dist < 5000) { // within 5km
         isOnRoute = true;
         break;
       }
@@ -470,19 +488,22 @@ function countHazardsAlongRoute(route) {
     if (isOnRoute) {
       count++;
       hazardsOnRoute.push(report);
-      // Highlight the marker on the route by making it bounce
-      marker.setAnimation(google.maps.Animation.BOUNCE);
-      marker.setZIndex(1000); // bring to front
-      
-      // Stop bouncing after 4 seconds to avoid annoyance
+
+      // Make the marker "bounce" by briefly enlarging it
+      const originalIcon = marker.getIcon();
+      const bigIcon = createMarkerIcon(report.type);
+      bigIcon.options.iconSize = [48, 60];
+      bigIcon.options.iconAnchor = [24, 60];
+      marker.setIcon(bigIcon);
+      marker.setZIndexOffset(1000);
+
       setTimeout(() => {
-        marker.setAnimation(null);
+        marker.setIcon(originalIcon);
+        marker.setZIndexOffset(0);
       }, 4000);
-    } else {
-      marker.setAnimation(null);
     }
   });
-  
+
   // Render hazards in sidebar
   const container = document.getElementById('routeHazardsContainer');
   if (container) {
@@ -493,7 +514,7 @@ function countHazardsAlongRoute(route) {
         const photoHtml = h.photo ? `<img src="${h.photo}" style="width:100%; height:140px; object-fit:cover; border-radius:6px; margin-top:8px; border:1px solid #d8e1dc;" />` : '';
         const borderColor = h.type === 'danger' ? '#e64c42' : '#eea338';
         const bgColor = h.type === 'danger' ? '#fdf2f1' : '#fef9f1';
-        
+
         html += `
           <div style="background:${bgColor}; border-left:4px solid ${borderColor}; padding:12px; margin-bottom:10px; border-radius:4px;">
             <strong style="display:block; font-size:14px; color:#193131;">${h.title}</strong>
@@ -589,31 +610,6 @@ async function fetchWeather(lat, lng, locationName) {
   }
 }
 
-// Resolve coordinates to a city name using Google Maps Geocoder
-function getCityName(lat, lng) {
-  return new Promise(resolve => {
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        // Try to find city/locality from address components
-        for (const result of results) {
-          for (const comp of result.address_components) {
-            if (comp.types.includes('locality')) {
-              const state = result.address_components.find(c => c.types.includes('administrative_area_level_1'));
-              resolve(state ? `${comp.long_name}, ${state.short_name}` : comp.long_name);
-              return;
-            }
-          }
-        }
-        // Fallback: use first result's formatted address
-        resolve(results[0].formatted_address.split(',').slice(0, 2).join(','));
-      } else {
-        resolve('Your area');
-      }
-    });
-  });
-}
-
 // ─── Geolocation ──────────────────────────────────────────────────────────────
 function triggerGeolocation() {
   const notice = document.getElementById('mapNotice');
@@ -627,41 +623,40 @@ function triggerGeolocation() {
 
   navigator.geolocation.getCurrentPosition(
     pos => {
-      const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const userLat = pos.coords.latitude;
+      const userLng = pos.coords.longitude;
 
       // Remove existing user marker
-      if (userMarker) userMarker.setMap(null);
+      if (userMarker) map.removeLayer(userMarker);
+      if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
 
       // Add blue dot marker for user location
-      userMarker = new google.maps.Marker({
-        position: userPos,
-        map: map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: '#4285F4',
-          fillOpacity: 1,
-          strokeColor: '#fff',
-          strokeWeight: 3
-        },
-        title: 'Your location',
-        zIndex: 999
+      const blueIcon = L.divIcon({
+        className: 'user-location-dot',
+        html: '<div style="width:20px;height:20px;background:#4285F4;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(66,133,244,0.4);"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
       });
+
+      userMarker = L.marker([userLat, userLng], {
+        icon: blueIcon,
+        zIndexOffset: 999,
+        title: 'Your location'
+      }).addTo(map);
+
+      userMarker.bindPopup('📍 Your current location');
 
       // Add accuracy circle
-      new google.maps.Circle({
-        strokeColor: '#4285F4',
-        strokeOpacity: 0.2,
-        strokeWeight: 1,
+      userAccuracyCircle = L.circle([userLat, userLng], {
+        color: '#4285F4',
         fillColor: '#4285F4',
         fillOpacity: 0.08,
-        map: map,
-        center: userPos,
+        weight: 1,
+        opacity: 0.2,
         radius: pos.coords.accuracy
-      });
+      }).addTo(map);
 
-      map.panTo(userPos);
-      map.setZoom(14);
+      map.setView([userLat, userLng], 14);
 
       // Update origin input
       document.getElementById('origin').value = 'Your location';
@@ -669,16 +664,13 @@ function triggerGeolocation() {
       notice.textContent = 'Your location is shown — nearby risks highlighted';
 
       // Update weather for user's actual location
-      getCityName(userPos.lat, userPos.lng).then(cityName => {
-        fetchWeather(userPos.lat, userPos.lng, cityName);
+      getCityName(userLat, userLng).then(cityName => {
+        fetchWeather(userLat, userLng, cityName);
       });
 
       // Check nearby hazards
       const nearby = reports.filter(r => {
-        const dist = google.maps.geometry.spherical.computeDistanceBetween(
-          new google.maps.LatLng(userPos),
-          new google.maps.LatLng(r.lat, r.lng)
-        );
+        const dist = haversineDistance(userLat, userLng, r.lat, r.lng);
         return dist < 10000 && r.type !== 'safe';
       });
 
@@ -699,7 +691,6 @@ function setupGeolocation() {
 
 // ─── Layer Controls ───────────────────────────────────────────────────────────
 let currentLayer = 'flood';
-let weatherOverlays = [];
 
 function setupLayerControls() {
   document.querySelectorAll('.map-control').forEach(btn => {
@@ -711,22 +702,17 @@ function setupLayerControls() {
 
       const notice = document.getElementById('mapNotice');
 
-      // Clear layers
-      trafficLayer.setMap(null);
-      clearWeatherOverlays();
+      // Clear overlays
+      clearRainfallOverlays();
 
       if (layer === 'flood') {
-        // Show flood markers
-        markers.forEach(m => m.setMap(map));
+        markers.forEach(m => m.addTo(map));
         notice.textContent = 'Showing flood-risk reports across Assam';
       } else if (layer === 'roads') {
-        // Show traffic layer + markers
-        markers.forEach(m => m.setMap(map));
-        trafficLayer.setMap(map);
-        notice.textContent = 'Showing live traffic and community road-condition updates';
+        markers.forEach(m => m.addTo(map));
+        notice.textContent = 'Showing road status and community reports';
       } else if (layer === 'rain') {
-        // Show markers + simulated rainfall zones
-        markers.forEach(m => m.setMap(map));
+        markers.forEach(m => m.addTo(map));
         showRainfallOverlay();
         notice.textContent = 'Showing current rainfall intensity zones';
       }
@@ -735,7 +721,6 @@ function setupLayerControls() {
 }
 
 function showRainfallOverlay() {
-  // Simulated rainfall intensity zones across Assam
   const rainfallZones = [
     { lat: 26.18, lng: 91.75, radius: 15000, intensity: 'heavy' },
     { lat: 26.63, lng: 92.80, radius: 12000, intensity: 'moderate' },
@@ -753,24 +738,22 @@ function showRainfallOverlay() {
 
   rainfallZones.forEach(zone => {
     const colors = intensityColors[zone.intensity];
-    const circle = new google.maps.Circle({
-      strokeColor: colors.stroke,
-      strokeOpacity: 0.5,
-      strokeWeight: 1,
+    const circle = L.circle([zone.lat, zone.lng], {
+      color: colors.stroke,
       fillColor: colors.fill,
       fillOpacity: colors.opacity,
-      map: map,
-      center: { lat: zone.lat, lng: zone.lng },
+      weight: 1,
+      opacity: 0.5,
       radius: zone.radius,
-      clickable: false
-    });
-    weatherOverlays.push(circle);
+      interactive: false
+    }).addTo(map);
+    rainfallOverlays.push(circle);
   });
 }
 
-function clearWeatherOverlays() {
-  weatherOverlays.forEach(o => o.setMap(null));
-  weatherOverlays = [];
+function clearRainfallOverlays() {
+  rainfallOverlays.forEach(o => map.removeLayer(o));
+  rainfallOverlays = [];
 }
 
 // ─── Report Hazard Dialog ─────────────────────────────────────────────────────
@@ -789,7 +772,7 @@ function setupReportForm() {
   let hasAttachedPhoto = false;
 
   reportBtn.addEventListener('click', () => dialog.showModal());
-  
+
   closeBtn.addEventListener('click', () => {
     dialog.close();
     resetReportForm();
@@ -828,8 +811,7 @@ function setupReportForm() {
     hasAttachedPhoto = false;
   }
 
-  form.addEventListener('submit', e => {
-    // Only process if it's the submit button
+  form.addEventListener('submit', async e => {
     if (e.submitter && e.submitter.value === 'submit') {
       e.preventDefault();
 
@@ -848,86 +830,78 @@ function setupReportForm() {
       if (hazardType === 0 || hazardType === 2) type = 'danger';
       else if (hazardType === 3) type = 'safe';
 
-      // Geocode the location and add marker
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode(
-        { address: location + ', Assam, India' },
-        (results, status) => {
-          let newLat = 26.2 + (Math.random() - 0.5) * 0.1;
-          let newLng = 91.75 + (Math.random() - 0.5) * 0.1;
+      // Geocode the location using Nominatim
+      let newLat = 26.2 + (Math.random() - 0.5) * 0.1;
+      let newLng = 91.75 + (Math.random() - 0.5) * 0.1;
 
-          if (status === 'OK' && results[0]) {
-            newLat = results[0].geometry.location.lat();
-            newLng = results[0].geometry.location.lng();
-          }
+      const geo = await geocodePlace(location);
+      if (geo) {
+        newLat = geo.lat;
+        newLng = geo.lng;
+      }
 
-          const newReport = {
-            id: reports.length + 1,
-            title: location,
-            text: details || typeSelect.options[typeSelect.selectedIndex].text,
-            name: 'You',
-            time: 'Just now',
-            type: type,
-            lat: newLat,
-            lng: newLng,
-            photo: hasAttachedPhoto ? photoPreview.src : null
-          };
+      const newReport = {
+        id: reports.length + 1,
+        title: location,
+        text: details || typeSelect.options[typeSelect.selectedIndex].text,
+        name: 'You',
+        time: 'Just now',
+        type: type,
+        lat: newLat,
+        lng: newLng,
+        photo: hasAttachedPhoto ? photoPreview.src : null
+      };
 
-          reports.push(newReport);
+      reports.push(newReport);
 
-          // Add marker
-          const marker = new google.maps.Marker({
-            position: { lat: newLat, lng: newLng },
-            map: map,
-            icon: createMarkerIcon(type),
-            title: location,
-            animation: google.maps.Animation.DROP
-          });
+      // Add marker
+      const marker = L.marker([newLat, newLng], {
+        icon: createMarkerIcon(type),
+        title: location
+      }).addTo(map);
 
-          marker.reportData = newReport;
+      marker.reportData = newReport;
 
-          marker.addListener('click', () => {
-            const statusLabel = type === 'danger' ? 'Not Safe' : type === 'caution' ? 'Caution' : 'Clear';
-            const statusClass = type === 'danger' ? 'iw-danger' : type === 'caution' ? 'iw-caution' : 'iw-safe';
-            infoWindow.setContent(`
-              <div class="iw-content ${statusClass}">
-                <div class="iw-badge">${statusLabel}</div>
-                <h3>${newReport.title}</h3>
-                <p>${newReport.text}</p>
-                <div class="iw-meta">
-                  <span>📍 Just now</span>
-                  <span>👤 You</span>
-                </div>
-                <div class="iw-unverified">⏳ Pending community verification</div>
-              </div>
-            `);
-            infoWindow.open(map, marker);
-          });
+      const statusLabel = type === 'danger' ? 'Not Safe' : type === 'caution' ? 'Caution' : 'Clear';
+      const statusClass = type === 'danger' ? 'iw-danger' : type === 'caution' ? 'iw-caution' : 'iw-safe';
+      const thisReportHasPhoto = hasAttachedPhoto;
 
-          markers.push(marker);
+      const photoBadge = thisReportHasPhoto ?
+        '<span style="background: #e4f1e8; color: #199178; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold;">📸 Photo attached</span>' : '';
 
-          // Re-render sidebar
-          renderReports();
+      marker.bindPopup(`
+        <div class="iw-content ${statusClass}">
+          <div class="iw-badge">${statusLabel}</div>
+          <h3>${newReport.title}</h3>
+          <p>${newReport.text}</p>
+          <div class="iw-meta" style="flex-wrap: wrap;">
+            <span>📍 Just now</span>
+            <span>👤 You</span>
+            ${photoBadge}
+          </div>
+          <div class="iw-unverified">⏳ Pending community verification</div>
+        </div>
+      `, { maxWidth: 280, className: 'custom-popup' });
 
-          // Update safety score
-          updateSafetyScore();
+      markers.push(marker);
 
-          // Pan to new report
-          map.panTo({ lat: newLat, lng: newLng });
-          map.setZoom(13);
+      // Re-render sidebar
+      renderReports();
 
-          // Close dialog
-          dialog.close();
+      // Update safety score
+      updateSafetyScore();
 
-          // Show confirmation
-          document.getElementById('mapNotice').textContent = `Report submitted: "${location}" — pending community verification`;
+      // Pan to new report
+      map.setView([newLat, newLng], 13);
 
-          // Reset form
-          locationInput.value = '';
-          detailsTextarea.value = '';
-          typeSelect.selectedIndex = 0;
-        }
-      );
+      // Close dialog
+      dialog.close();
+
+      // Show confirmation
+      document.getElementById('mapNotice').textContent = `Report submitted: "${location}" — pending community verification`;
+
+      // Reset form
+      resetReportForm();
     }
   });
 }
@@ -1070,55 +1044,5 @@ document.getElementById('languageToggle').addEventListener('click', () => {
   document.getElementById('languageToggle').textContent = usingAssamese ? 'English' : 'অসমীয়া';
 });
 
-// ─── Dynamic Google Maps API Loading ──────────────────────────────────────────
-// Gets the API key securely: from gitignored config.js (local) or /api/maps-config (Vercel)
-window.initMap = initMap;
-
-(async function loadGoogleMaps() {
-  let apiKey = window.MAPS_API_KEY; // from local config.js (gitignored)
-
-  // If no local key, try fetching from Vercel serverless function
-  if (!apiKey) {
-    try {
-      const res = await fetch('/api/maps-config');
-      if (res.ok) {
-        const data = await res.json();
-        apiKey = data.key;
-      }
-    } catch (e) {
-      // Fetch failed (e.g., running locally without config.js)
-    }
-  }
-
-  if (!apiKey) {
-    console.error('Google Maps API key not found. Create a config.js file or set GOOGLE_MAPS_API_KEY on Vercel.');
-    document.getElementById('googleMap').innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e4f1e8;flex-direction:column;gap:12px;padding:20px;text-align:center;">
-        <span style="font-size:48px;">🗺️</span>
-        <h3 style="margin:0;font-family:'Playfair Display',serif;color:#183b38;">Map Unavailable</h3>
-        <p style="margin:0;font-size:13px;color:#647573;max-width:300px;">Google Maps API key not configured. Add your key to <code>config.js</code> for local development or set <code>GOOGLE_MAPS_API_KEY</code> in Vercel environment variables.</p>
-      </div>
-    `;
-    // Still render the sidebar reports
-    renderReports();
-    return;
-  }
-
-  // Dynamically load the Google Maps script
-  const script = document.createElement('script');
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=initMap`;
-  script.async = true;
-  script.defer = true;
-  script.onerror = () => {
-    console.error('Failed to load Google Maps API');
-    document.getElementById('googleMap').innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#e4f1e8;flex-direction:column;gap:12px;padding:20px;text-align:center;">
-        <span style="font-size:48px;">⚠️</span>
-        <h3 style="margin:0;font-family:'Playfair Display',serif;color:#183b38;">Could not load map</h3>
-        <p style="margin:0;font-size:13px;color:#647573;">Check your internet connection and API key configuration.</p>
-      </div>
-    `;
-    renderReports();
-  };
-  document.head.appendChild(script);
-})();
+// ─── Initialize everything when DOM is ready ──────────────────────────────────
+document.addEventListener('DOMContentLoaded', initMap);

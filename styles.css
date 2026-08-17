@@ -213,12 +213,13 @@ kbd { font: 10px 'DM Sans'; white-space: nowrap; color: #81918e; background: #f2
   min-height: 620px;
 }
 
-/* ─── Google Map container ───────────────────────────────────────────────── */
-#googleMap {
+/* ─── Leaflet Map container ──────────────────────────────────────────────── */
+#leafletMap {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  z-index: 1;
 }
 
 /* ─── Map toolbar ────────────────────────────────────────────────────────── */
@@ -363,15 +364,47 @@ kbd { font: 10px 'DM Sans'; white-space: nowrap; color: #81918e; background: #f2
   font-weight: 600;
 }
 
-/* Override Google Maps InfoWindow styles */
-.gm-style-iw-chr { display: none; }
-.gm-style .gm-style-iw-d { overflow: visible !important; }
-.gm-style .gm-style-iw {
+/* Override Leaflet popup styles */
+.leaflet-popup-content-wrapper {
   border-radius: 10px !important;
   box-shadow: 0 6px 20px rgba(30, 60, 56, 0.15) !important;
-  padding: 12px !important;
+  padding: 4px !important;
 }
-.gm-style .gm-style-iw-tc { display: none; }
+.leaflet-popup-content {
+  margin: 8px 10px !important;
+  font-family: 'DM Sans', sans-serif;
+}
+.leaflet-popup-close-button {
+  font-size: 18px !important;
+  color: #8a9996 !important;
+  padding: 4px 8px !important;
+}
+
+/* ─── Search results dropdown ────────────────────────────────────────────── */
+.search-results {
+  background: white;
+  border: 1px solid #e5ebe7;
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: -4px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.search-item {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #193131;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f2f0;
+  transition: background 0.15s;
+}
+.search-item:last-child { border-bottom: 0; }
+.search-item:hover { background: #f2f7f5; }
+
+/* Hide Leaflet routing machine control (we use our own UI) */
+.leaflet-routing-container { display: none !important; }
 
 /* ─── FAB ────────────────────────────────────────────────────────────────── */
 .fab {
