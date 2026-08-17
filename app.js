@@ -450,6 +450,7 @@ function calculateRoute(origin, destination, notice) {
 function countHazardsAlongRoute(route) {
   let count = 0;
   const path = route.overview_path;
+  const hazardsOnRoute = [];
 
   markers.forEach(marker => {
     const report = marker.reportData;
@@ -468,6 +469,7 @@ function countHazardsAlongRoute(route) {
 
     if (isOnRoute) {
       count++;
+      hazardsOnRoute.push(report);
       // Highlight the marker on the route by making it bounce
       marker.setAnimation(google.maps.Animation.BOUNCE);
       marker.setZIndex(1000); // bring to front
@@ -480,6 +482,33 @@ function countHazardsAlongRoute(route) {
       marker.setAnimation(null);
     }
   });
+  
+  // Render hazards in sidebar
+  const container = document.getElementById('routeHazardsContainer');
+  if (container) {
+    if (hazardsOnRoute.length > 0) {
+      container.style.display = 'block';
+      let html = '<p class="section-label" style="margin-top:20px;">HAZARDS ON ROUTE</p>';
+      hazardsOnRoute.forEach(h => {
+        const photoHtml = h.photo ? `<img src="${h.photo}" style="width:100%; height:140px; object-fit:cover; border-radius:6px; margin-top:8px; border:1px solid #d8e1dc;" />` : '';
+        const borderColor = h.type === 'danger' ? '#e64c42' : '#eea338';
+        const bgColor = h.type === 'danger' ? '#fdf2f1' : '#fef9f1';
+        
+        html += `
+          <div style="background:${bgColor}; border-left:4px solid ${borderColor}; padding:12px; margin-bottom:10px; border-radius:4px;">
+            <strong style="display:block; font-size:14px; color:#193131;">${h.title}</strong>
+            <p style="font-size:12px; color:#5c6b6a; margin:4px 0 0 0; line-height:1.4;">${h.text}</p>
+            ${photoHtml}
+            <div style="font-size:10px; color:#81908d; margin-top:8px;">📍 ${h.time} &nbsp;•&nbsp; 👤 ${h.name}</div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    } else {
+      container.style.display = 'none';
+      container.innerHTML = '';
+    }
+  }
 
   return count;
 }
@@ -840,7 +869,8 @@ function setupReportForm() {
             time: 'Just now',
             type: type,
             lat: newLat,
-            lng: newLng
+            lng: newLng,
+            photo: hasAttachedPhoto ? photoPreview.src : null
           };
 
           reports.push(newReport);
