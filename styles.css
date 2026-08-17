@@ -11,17 +11,28 @@
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--cream); color: var(--ink); font-family: 'DM Sans', sans-serif; }
+body {
+  margin: 0;
+  background: var(--cream) url('bg.png') no-repeat center center fixed;
+  background-size: cover;
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+}
 
 /* ─── Top bar ────────────────────────────────────────────────────────────── */
 .topbar {
   height: 68px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   padding: 0 5.5vw;
-  border-bottom: 1px solid #edf0ed;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
   gap: 28px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 .brand { font-weight: 700; font-size: 22px; color: #153b39; text-decoration: none; letter-spacing: -1px; }
 .brand span span { color: #10928b; }
@@ -52,14 +63,16 @@ body { margin: 0; background: var(--cream); color: var(--ink); font-family: 'DM 
 
 /* ─── Weather card ───────────────────────────────────────────────────────── */
 .weather-card {
-  background: #fff;
-  border: 1px solid #e5ebe7;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 11px;
   padding: 17px 21px;
   display: flex;
   align-items: center;
   gap: 13px;
-  box-shadow: 0 5px 18px #1d42390a;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07);
 }
 .cloud { font-size: 31px; color: #5e9fbd; }
 .weather-card strong { font-size: 25px; display: block; }
@@ -78,13 +91,16 @@ body { margin: 0; background: var(--cream); color: var(--ink); font-family: 'DM 
 
 /* ─── Sidebar ────────────────────────────────────────────────────────────── */
 .sidebar {
-  background: #fff;
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-right: 0;
   border-radius: 12px 0 0 12px;
   padding: 19px 20px;
   position: relative;
   z-index: 2;
+  box-shadow: -5px 5px 20px rgba(0,0,0,0.03);
 }
 
 /* ─── Search ─────────────────────────────────────────────────────────────── */
@@ -208,9 +224,10 @@ kbd { font: 10px 'DM Sans'; white-space: nowrap; color: #81918e; background: #f2
   overflow: hidden;
   border-radius: 0 12px 12px 0;
   position: relative;
-  border: 1px solid #c9ddda;
-  background: #e4f1e8;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(228, 241, 232, 0.8);
   min-height: 620px;
+  box-shadow: 5px 5px 20px rgba(0,0,0,0.03);
 }
 
 /* ─── Leaflet Map container ──────────────────────────────────────────────── */
