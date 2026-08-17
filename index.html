@@ -40,7 +40,7 @@
           <button id="routeButton" class="primary full">Find safest route <span>→</span></button>
         </div>
         <div class="safety-score"><div class="score-ring"><b>72</b><small>/100</small></div><div><p class="section-label">AREA SAFETY SCORE</p><strong>Exercise caution</strong><span>Based on 48 recent reports</span></div></div>
-        <div class="report-heading"><div><p class="section-label">NEARBY REPORTS</p><h2>What people are seeing</h2></div><button class="filter">⌄ Filter</button></div>
+        <div class="report-heading"><div><p class="section-label">NEARBY REPORTS (DEMO DATA)</p><h2>What people are seeing</h2><p style="font-size: 11px; color: #81908d; margin-top: 4px; line-height: 1.4;">These are example reports. Add real-time reports of your area to alert others—they will show up here.</p></div></div>
         <div id="reportList" class="report-list"></div>
       </aside>
 
@@ -57,7 +57,35 @@
   </main>
 
   <button id="reportButton" class="fab"><span>＋</span> Report a hazard</button>
-  <dialog id="reportDialog"><form method="dialog" id="reportForm"><button class="close" value="cancel">×</button><p class="eyebrow">KEEP YOUR COMMUNITY SAFE</p><h2>Report a road hazard</h2><p class="dialog-copy">Your update will help travellers make safer choices.</p><label>Location<input required placeholder="e.g. NH 27 near Chandrapur" /></label><label>What did you see?<select><option>Road flooded / impassable</option><option>Waterlogging — pass with care</option><option>Bridge or road damage</option><option>Road is clear now</option></select></label><label>Details (optional)<textarea placeholder="Water level, landmarks, vehicle access…"></textarea></label><label class="photo-upload">▧ Add a photo <input type="file" accept="image/*" hidden></label><button class="primary full" value="submit">Publish report</button></form></dialog>
+  <dialog id="reportDialog">
+    <form method="dialog" id="reportForm">
+      <button class="close" value="cancel" type="button">×</button>
+      <p class="eyebrow">KEEP YOUR COMMUNITY SAFE</p>
+      <h2>Report a road hazard</h2>
+      <p class="dialog-copy">Your update will help travellers make safer choices.</p>
+      <label>Location<input required placeholder="e.g. NH 27 near Chandrapur" /></label>
+      <label>What did you see?
+        <select>
+          <option>Road flooded / impassable</option>
+          <option>Waterlogging — pass with care</option>
+          <option>Bridge or road damage</option>
+          <option>Road is clear now</option>
+        </select>
+      </label>
+      <label>Details (optional)<textarea placeholder="Water level, landmarks, vehicle access…"></textarea></label>
+      
+      <label class="photo-upload" id="photoUploadLabel">
+        ▧ Add a real-time photo of the area
+        <input type="file" accept="image/*" hidden id="reportPhotoInput">
+      </label>
+      <div id="photoPreviewContainer" style="display: none; margin-top: 10px; position: relative;">
+        <img id="photoPreview" style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid #d8e1dc;" />
+        <button type="button" id="removePhotoBtn" style="position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;">×</button>
+      </div>
+
+      <button class="primary full" value="submit" type="submit" style="margin-top: 15px;">Publish report</button>
+    </form>
+  </dialog>
 
   <template id="reportTemplate"><article class="report"><div class="report-icon"></div><div class="report-content"><div class="report-title"><strong></strong><time></time></div><p></p><div class="report-meta"><span class="reporter"></span><span class="verified">✓ Verified by community</span></div></div></article></template>
 

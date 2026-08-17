@@ -706,10 +706,58 @@ function setupReportForm() {
   const dialog = document.getElementById('reportDialog');
   const reportBtn = document.getElementById('reportButton');
   const form = document.getElementById('reportForm');
+  const closeBtn = dialog.querySelector('.close');
+
+  const photoInput = document.getElementById('reportPhotoInput');
+  const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+  const photoPreview = document.getElementById('photoPreview');
+  const removePhotoBtn = document.getElementById('removePhotoBtn');
+  const photoUploadLabel = document.getElementById('photoUploadLabel');
+
+  let hasAttachedPhoto = false;
 
   reportBtn.addEventListener('click', () => dialog.showModal());
+  
+  closeBtn.addEventListener('click', () => {
+    dialog.close();
+    resetReportForm();
+  });
+
+  // Handle photo selection and preview
+  photoInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        photoPreview.src = e.target.result;
+        photoPreviewContainer.style.display = 'block';
+        photoUploadLabel.style.display = 'none';
+        hasAttachedPhoto = true;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Handle photo removal
+  removePhotoBtn.addEventListener('click', () => {
+    photoInput.value = '';
+    photoPreview.src = '';
+    photoPreviewContainer.style.display = 'none';
+    photoUploadLabel.style.display = 'block';
+    hasAttachedPhoto = false;
+  });
+
+  function resetReportForm() {
+    form.reset();
+    photoInput.value = '';
+    photoPreview.src = '';
+    photoPreviewContainer.style.display = 'none';
+    photoUploadLabel.style.display = 'block';
+    hasAttachedPhoto = false;
+  }
 
   form.addEventListener('submit', e => {
+    // Only process if it's the submit button
     if (e.submitter && e.submitter.value === 'submit') {
       e.preventDefault();
 
