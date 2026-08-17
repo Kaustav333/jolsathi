@@ -79,6 +79,7 @@ let routingControl;
 let currentRouteLayer;
 let rainfallOverlays = [];
 let searchTimeout;
+let hasRealReports = false;
 
 // ─── Assam bounds for restricting the map ─────────────────────────────────────
 const assamBounds = L.latLngBounds(
@@ -830,6 +831,20 @@ function setupReportForm() {
       let type = 'caution';
       if (hazardType === 0 || hazardType === 2) type = 'danger';
       else if (hazardType === 3) type = 'safe';
+
+      // If this is the first real report, clear the demo data
+      if (!hasRealReports) {
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+        reports.length = 0; // Clear the array
+        hasRealReports = true;
+        
+        // Remove the "(DEMO DATA)" from the sidebar title and hide the demo description
+        const heading = document.querySelector('.report-heading .section-label');
+        if (heading) heading.textContent = 'NEARBY REPORTS';
+        const subheading = document.querySelector('.report-heading p');
+        if (subheading) subheading.style.display = 'none';
+      }
 
       // Geocode the location using Nominatim
       let newLat = 26.2 + (Math.random() - 0.5) * 0.1;
