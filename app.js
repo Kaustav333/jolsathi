@@ -451,16 +451,33 @@ function countHazardsAlongRoute(route) {
   let count = 0;
   const path = route.overview_path;
 
-  reports.forEach(report => {
-    if (report.type === 'safe') return;
+  markers.forEach(marker => {
+    const report = marker.reportData;
+    if (!report || report.type === 'safe') return;
+    
     const reportPos = new google.maps.LatLng(report.lat, report.lng);
+    let isOnRoute = false;
 
     for (let i = 0; i < path.length; i++) {
       const dist = google.maps.geometry.spherical.computeDistanceBetween(path[i], reportPos);
       if (dist < 5000) { // within 5km of route
-        count++;
+        isOnRoute = true;
         break;
       }
+    }
+
+    if (isOnRoute) {
+      count++;
+      // Highlight the marker on the route by making it bounce
+      marker.setAnimation(google.maps.Animation.BOUNCE);
+      marker.setZIndex(1000); // bring to front
+      
+      // Stop bouncing after 4 seconds to avoid annoyance
+      setTimeout(() => {
+        marker.setAnimation(null);
+      }, 4000);
+    } else {
+      marker.setAnimation(null);
     }
   });
 
