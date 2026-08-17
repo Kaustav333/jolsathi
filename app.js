@@ -213,6 +213,9 @@ function initMap() {
       document.getElementById('placeSearch').focus();
     }
   });
+
+  // Automatically request location and update weather on load
+  triggerGeolocation();
 }
 
 // ─── Create custom marker SVG ─────────────────────────────────────────────────
@@ -540,84 +543,86 @@ function getCityName(lat, lng) {
 }
 
 // ─── Geolocation ──────────────────────────────────────────────────────────────
-function setupGeolocation() {
-  document.getElementById('locateButton').addEventListener('click', () => {
-    const notice = document.getElementById('mapNotice');
+function triggerGeolocation() {
+  const notice = document.getElementById('mapNotice');
 
-    if (!navigator.geolocation) {
-      notice.textContent = 'Location access unavailable — showing Assam overview';
-      return;
-    }
+  if (!navigator.geolocation) {
+    notice.textContent = 'Location access unavailable — showing Assam overview';
+    return;
+  }
 
-    notice.textContent = 'Finding your location…';
+  notice.textContent = 'Finding your location…';
 
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
 
-        // Remove existing user marker
-        if (userMarker) userMarker.setMap(null);
+      // Remove existing user marker
+      if (userMarker) userMarker.setMap(null);
 
-        // Add blue dot marker for user location
-        userMarker = new google.maps.Marker({
-          position: userPos,
-          map: map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: '#4285F4',
-            fillOpacity: 1,
-            strokeColor: '#fff',
-            strokeWeight: 3
-          },
-          title: 'Your location',
-          zIndex: 999
-        });
-
-        // Add accuracy circle
-        new google.maps.Circle({
-          strokeColor: '#4285F4',
-          strokeOpacity: 0.2,
-          strokeWeight: 1,
+      // Add blue dot marker for user location
+      userMarker = new google.maps.Marker({
+        position: userPos,
+        map: map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 10,
           fillColor: '#4285F4',
-          fillOpacity: 0.08,
-          map: map,
-          center: userPos,
-          radius: pos.coords.accuracy
-        });
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 3
+        },
+        title: 'Your location',
+        zIndex: 999
+      });
 
-        map.panTo(userPos);
-        map.setZoom(14);
+      // Add accuracy circle
+      new google.maps.Circle({
+        strokeColor: '#4285F4',
+        strokeOpacity: 0.2,
+        strokeWeight: 1,
+        fillColor: '#4285F4',
+        fillOpacity: 0.08,
+        map: map,
+        center: userPos,
+        radius: pos.coords.accuracy
+      });
 
-        // Update origin input
-        document.getElementById('origin').value = 'Your location';
+      map.panTo(userPos);
+      map.setZoom(14);
 
-        notice.textContent = 'Your location is shown — nearby risks highlighted';
+      // Update origin input
+      document.getElementById('origin').value = 'Your location';
 
-        // Update weather for user's actual location
-        getCityName(userPos.lat, userPos.lng).then(cityName => {
-          fetchWeather(userPos.lat, userPos.lng, cityName);
-        });
+      notice.textContent = 'Your location is shown — nearby risks highlighted';
 
-        // Check nearby hazards
-        const nearby = reports.filter(r => {
-          const dist = google.maps.geometry.spherical.computeDistanceBetween(
-            new google.maps.LatLng(userPos),
-            new google.maps.LatLng(r.lat, r.lng)
-          );
-          return dist < 10000 && r.type !== 'safe';
-        });
+      // Update weather for user's actual location
+      getCityName(userPos.lat, userPos.lng).then(cityName => {
+        fetchWeather(userPos.lat, userPos.lng, cityName);
+      });
 
-        if (nearby.length > 0) {
-          notice.textContent = `Your location shown — ${nearby.length} hazard${nearby.length > 1 ? 's' : ''} within 10km`;
-        }
-      },
-      () => {
-        notice.textContent = 'Location access denied — showing Assam overview';
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  });
+      // Check nearby hazards
+      const nearby = reports.filter(r => {
+        const dist = google.maps.geometry.spherical.computeDistanceBetween(
+          new google.maps.LatLng(userPos),
+          new google.maps.LatLng(r.lat, r.lng)
+        );
+        return dist < 10000 && r.type !== 'safe';
+      });
+
+      if (nearby.length > 0) {
+        notice.textContent = `Your location shown — ${nearby.length} hazard${nearby.length > 1 ? 's' : ''} within 10km`;
+      }
+    },
+    () => {
+      notice.textContent = 'Location access denied — showing Assam overview';
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function setupGeolocation() {
+  document.getElementById('locateButton').addEventListener('click', triggerGeolocation);
 }
 
 // ─── Layer Controls ───────────────────────────────────────────────────────────
