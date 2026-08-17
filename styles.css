@@ -13,7 +13,7 @@
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--cream) url('bg.png') no-repeat center center fixed;
+  background: var(--cream) url('bg.jpg') no-repeat center center fixed;
   background-size: cover;
   color: var(--ink);
   font-family: 'DM Sans', sans-serif;
