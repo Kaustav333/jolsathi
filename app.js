@@ -120,10 +120,11 @@ function initMap() {
   // Add zoom control to the right
   L.control.zoom({ position: 'topright' }).addTo(map);
 
-  // Add OpenStreetMap tiles
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // Add CartoDB Voyager tiles (detailed, clean, free — much better than default OSM)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     attribution: '',
-    maxZoom: 19
+    maxZoom: 20,
+    subdomains: 'abcd'
   }).addTo(map);
 
   // Fetch live weather for Guwahati (default)
