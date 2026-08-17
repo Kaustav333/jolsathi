@@ -80,6 +80,7 @@ let currentRouteLayer;
 let rainfallOverlays = [];
 let searchTimeout;
 let hasRealReports = false;
+let searchedAreaBoundary;
 
 // ─── Assam bounds for restricting the map ─────────────────────────────────────
 const assamBounds = L.latLngBounds(
@@ -239,8 +240,32 @@ function setupSearch() {
       resultsDiv.style.display = 'none';
       return;
     }
-    searchTimeout = setTimeout(() => nominatimSearch(query, resultsDiv, (lat, lng, name) => {
-      map.setView([lat, lng], 14);
+    searchTimeout = setTimeout(() => nominatimSearch(query, resultsDiv, (lat, lng, name, geojson) => {
+      // Remove old boundary if exists
+      if (searchedAreaBoundary) {
+        map.removeLayer(searchedAreaBoundary);
+        searchedAreaBoundary = null;
+      }
+      
+      // Draw new boundary if geojson is available
+      if (geojson && (geojson.type === 'Polygon' || geojson.type === 'MultiPolygon')) {
+        searchedAreaBoundary = L.geoJSON(geojson, {
+          style: {
+            color: '#10928b',
+            weight: 3,
+            opacity: 0.9,
+            fillColor: '#10928b',
+            fillOpacity: 0.1,
+            dashArray: '5, 5' // Adds a nice dotted effect
+          }
+        }).addTo(map);
+        
+        // Fit map to the boundary instead of just centering
+        map.fitBounds(searchedAreaBoundary.getBounds(), { padding: [20, 20], maxZoom: 14 });
+      } else {
+        map.setView([lat, lng], 14);
+      }
+      
       document.getElementById('mapNotice').textContent = `Showing: ${name}`;
       resultsDiv.style.display = 'none';
       searchInput.value = name;
@@ -257,7 +282,7 @@ function setupSearch() {
 
 async function nominatimSearch(query, resultsDiv, onSelect) {
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Assam, India')}&limit=5&countrycodes=in&viewbox=89.5,24.0,97.0,28.0&bounded=1`;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Assam, India')}&limit=5&countrycodes=in&viewbox=89.5,24.0,97.0,28.0&bounded=1&polygon_geojson=1`;
     const res = await fetch(url, {
       headers: { 'Accept-Language': 'en' }
     });
@@ -275,7 +300,7 @@ async function nominatimSearch(query, resultsDiv, onSelect) {
       div.className = 'search-item';
       div.textContent = item.display_name.split(',').slice(0, 3).join(',');
       div.addEventListener('click', () => {
-        onSelect(parseFloat(item.lat), parseFloat(item.lon), item.display_name.split(',').slice(0, 2).join(','));
+        onSelect(parseFloat(item.lat), parseFloat(item.lon), item.display_name.split(',').slice(0, 2).join(','), item.geojson);
       });
       resultsDiv.appendChild(div);
     });
@@ -372,6 +397,11 @@ function setupRouting() {
 }
 
 async function calculateRoute(originLatLng, destination, notice) {
+  if (searchedAreaBoundary) {
+    map.removeLayer(searchedAreaBoundary);
+    searchedAreaBoundary = null;
+  }
+
   notice.textContent = 'Finding safest route…';
 
   // Geocode destination
