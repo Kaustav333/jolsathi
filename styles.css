@@ -507,8 +507,8 @@ dialog textarea { height: 65px; resize: vertical; }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 800px) {
-  .intro { padding: 35px 20px; }
-  .weather-card { display: none; }
+  .intro { padding: 35px 20px; flex-direction: column; gap: 25px; }
+  .weather-card { width: 100%; box-sizing: border-box; }
   .dashboard { padding: 0 15px; display: block; }
   .sidebar { border-radius: 12px; max-height: none; }
   .map-panel { border-radius: 0 0 12px 12px; min-height: 480px; }
